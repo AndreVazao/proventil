@@ -1,0 +1,3 @@
+Flask==2.3.4
+Flask-Cors==3.0.10
+stripe==6.13.1
