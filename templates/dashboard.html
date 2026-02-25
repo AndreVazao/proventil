@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - ProVentil</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<header>
+    <h2>Dashboard Interno</h2>
+    <a href="/logout" class="logout">Logout</a>
+</header>
+
+<div class="container">
+
+    <h3>Configurações Gerais</h3>
+
+    <label>Preço Base:</label>
+    <input type="number" id="basePrice">
+
+    <label>Margem %:</label>
+    <input type="number" id="percentage">
+
+    <label>Deslocação 0-10km:</label>
+    <input type="number" id="deslocacao_0_10">
+
+    <label>Deslocação 10-25km:</label>
+    <input type="number" id="deslocacao_10_25">
+
+    <label>Deslocação 25-40km:</label>
+    <input type="number" id="deslocacao_25_40">
+
+    <label>Deslocação +40km:</label>
+    <input type="number" id="deslocacao_40">
+
+    <button onclick="guardarSettings()">Guardar Configurações</button>
+
+    <hr>
+
+    <h3>Fotos Técnicas Recebidas</h3>
+    <div id="photos"></div>
+
+</div>
+
+<script src="/static/js/main.js"></script>
+<script>
+carregarSettings();
+carregarFotos();
+</script>
+
+</body>
+  </html>
