@@ -1,3 +1,9 @@
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import ListFlowable, ListItem
 from flask import Flask, request, jsonify, render_template, session, redirect
 from flask_cors import CORS
 import sqlite3
@@ -110,6 +116,30 @@ cur.execute('''CREATE TABLE IF NOT EXISTS vehicles (
     id INTEGER PRIMARY KEY,
     name TEXT,
     gps_tracker_id TEXT,
+    team_id INTEGER
+)''')
+
+# CART ITEMS (itens da obra em tempo real)
+cur.execute('''CREATE TABLE IF NOT EXISTS cart_items (
+    id INTEGER PRIMARY KEY,
+    work_id INTEGER,
+    description TEXT,
+    quantity INTEGER,
+    unit_price REAL,
+    FOREIGN KEY(work_id) REFERENCES works(id)
+)''')
+
+# DOMAIN SETTINGS
+cur.execute('''CREATE TABLE IF NOT EXISTS domain_settings (
+    id INTEGER PRIMARY KEY,
+    domain TEXT,
+    stripe_public TEXT,
+    stripe_secret TEXT
+)''')
+
+# WORK TEAM ASSIGNMENT
+cur.execute('''CREATE TABLE IF NOT EXISTS work_teams (
+    work_id INTEGER,
     team_id INTEGER
 )''')
 
@@ -300,3 +330,106 @@ def create_work():
 @app.route('/videoporteiro')
 def videoporteiro():
     return render_template('videoporteiro.html')
+
+@app.route('/api/cart/add', methods=['POST'])
+def add_cart_item():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    data = request.json
+
+    cur.execute('''
+        INSERT INTO cart_items (work_id, description, quantity, unit_price)
+        VALUES (?, ?, ?, ?)
+    ''', (
+        data['work_id'],
+        data['description'],
+        data['quantity'],
+        data['unit_price']
+    ))
+
+    conn.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/cart/<work_id>')
+def get_cart(work_id):
+    cur.execute('SELECT description, quantity, unit_price FROM cart_items WHERE work_id=?', (work_id,))
+    items = cur.fetchall()
+
+    total = 0
+    result = []
+
+    for desc, qty, price in items:
+        subtotal = qty * price
+        total += subtotal
+        result.append({
+            'description': desc,
+            'quantity': qty,
+            'unit_price': price,
+            'subtotal': subtotal
+        })
+
+    return jsonify({'items': result, 'total': total})
+
+@app.route('/api/work/assign_team', methods=['POST'])
+def assign_team():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    data = request.json
+
+    cur.execute('INSERT INTO work_teams (work_id, team_id) VALUES (?, ?)',
+                (data['work_id'], data['team_id']))
+
+    conn.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/work/pdf/<work_id>')
+def gerar_pdf(work_id):
+
+    filename = f"proposta_{work_id}.pdf"
+    filepath = f"/tmp/{filename}"
+
+    doc = SimpleDocTemplate(filepath, pagesize=A4)
+    elements = []
+
+    styles = getSampleStyleSheet()
+    elements.append(Paragraph("<b>ProVentil - Proposta Oficial</b>", styles['Title']))
+    elements.append(Spacer(1, 20))
+
+    # Itens
+    cur.execute('SELECT description, quantity, unit_price FROM cart_items WHERE work_id=?', (work_id,))
+    items = cur.fetchall()
+
+    total = 0
+    for desc, qty, price in items:
+        subtotal = qty * price
+        total += subtotal
+        elements.append(Paragraph(f"{desc} - {qty} x {price}€ = {subtotal}€", styles['Normal']))
+
+    elements.append(Spacer(1, 20))
+    elements.append(Paragraph(f"<b>Total: {total}€</b>", styles['Heading2']))
+    elements.append(Spacer(1, 20))
+
+    clausulas = gerar_clausulas().split("\n")
+    lista = [ListItem(Paragraph(c, styles['Normal'])) for c in clausulas if c.strip()]
+    elements.append(ListFlowable(lista))
+
+    doc.build(elements)
+
+    return jsonify({'file': filename})
+
+def gerar_clausulas():
+    return """
+CONDIÇÕES GERAIS PROVENTIL
+
+1. Validade da proposta: 30 dias.
+2. Sistemas de videoporteiro apenas manutenção dos sistemas instalados pela ProVentil.
+3. Avarias sujeitas a avaliação técnica para determinar se se enquadram em garantia.
+4. Danos por vandalismo, quebra de ecrã, roubo ou uso indevido não são considerados garantia.
+5. Taxa adicional de 80€ para clientes faltosos após instalação inicial.
+6. Possível necessidade de grua será cobrada ao cliente pelo valor hora + manobrador.
+7. A ProVentil não se responsabiliza por tubos obstruídos, terras abatidas ou impossibilidade técnica de passagem de cabos.
+"""
+
