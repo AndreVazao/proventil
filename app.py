@@ -458,3 +458,32 @@ CONDIÇÕES GERAIS PROVENTIL
 7. A ProVentil não se responsabiliza por tubos obstruídos, terras abatidas ou impossibilidade técnica de passagem de cabos.
 """
 
+@app.route('/predio/<link_id>')
+def pagina_predio(link_id):
+
+    cur.execute('''
+        SELECT id, name, address, system_type, installation_date
+        FROM buildings WHERE link_id=?
+    ''', (link_id,))
+    building = cur.fetchone()
+
+    if not building:
+        return "Link inválido"
+
+    building_id = building[0]
+
+    cur.execute('''
+        SELECT type, status, total, created_at
+        FROM works WHERE building_id=?
+        ORDER BY id DESC
+    ''', (building_id,))
+    works = cur.fetchall()
+
+    return render_template(
+        'building_public.html',
+        name=building[1],
+        address=building[2],
+        system_type=building[3],
+        installation_date=building[4],
+        works=works
+               )
