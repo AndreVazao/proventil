@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gestão Prédios</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<header>
+    <h2>Gestão Prédios ProVentil</h2>
+</header>
+
+<div class="container">
+
+    <input type="text" id="nome" placeholder="Nome prédio">
+    <input type="text" id="morada" placeholder="Morada">
+    
+    <select id="tipo">
+        <option value="audio">Áudio</option>
+        <option value="video">Vídeo</option>
+    </select>
+
+    <input type="date" id="data_instalacao">
+
+    <button onclick="criar()">Criar Prédio</button>
+
+    <div id="link_result"></div>
+
+</div>
+
+<script>
+async function criar() {
+    const res = await fetch('/api/building', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            name: nome.value,
+            address: morada.value,
+            system_type: tipo.value,
+            installation_date: data_instalacao.value
+        })
+    });
+
+    const data = await res.json();
+
+    document.getElementById("link_result").innerHTML =
+        "Link Cliente: /predio/" + data.link_id;
+}
+</script>
+
+</body>
+  </html>
