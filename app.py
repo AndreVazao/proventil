@@ -296,3 +296,7 @@ def create_work():
 
     conn.commit()
     return jsonify({'success': True})
+
+@app.route('/videoporteiro')
+def videoporteiro():
+    return render_template('videoporteiro.html')
