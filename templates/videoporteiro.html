@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Porteiro - ProVentil</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<header>
+    <h2>Pedido Serviço Video Porteiro</h2>
+</header>
+
+<div class="container">
+
+    <label>Morada:</label>
+    <input type="text" id="morada">
+
+    <button onclick="verificar()">Verificar Sistema</button>
+
+    <div id="resultado"></div>
+
+</div>
+
+<script>
+async function verificar() {
+    const address = document.getElementById("morada").value;
+
+    const res = await fetch('/api/building_by_address', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({address})
+    });
+
+    const data = await res.json();
+
+    if (!data.found) {
+        document.getElementById("resultado").innerHTML =
+            "<p>Não existe instalação ProVentil nesta morada.</p>";
+        return;
+    }
+
+    let compatibilidade = "";
+
+    if (data.system_type === "audio") {
+        compatibilidade = "Sistema apenas Áudio. Não compatível com vídeo individual.";
+    } else {
+        compatibilidade = "Sistema Vídeo compatível.";
+    }
+
+    document.getElementById("resultado").innerHTML = `
+        <p>Instalado em: ${data.installation_date}</p>
+        <p>${compatibilidade}</p>
+        <p><strong>Avaliação obrigatória para garantia.</strong></p>
+        <p><strong>Taxa extra 80€ para faltosos pós instalação inicial.</strong></p>
+    `;
+}
+</script>
+
+</body>
+  </html>
