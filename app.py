@@ -230,3 +230,69 @@ def confirm_pay(quote_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+import uuid
+
+@app.route('/api/building', methods=['POST'])
+def create_building():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    data = request.json
+    link_id = str(uuid.uuid4())[:8]
+
+    cur.execute('''
+        INSERT INTO buildings (name, address, system_type, installation_date, link_id)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (
+        data['name'],
+        data['address'],
+        data['system_type'],
+        data['installation_date'],
+        link_id
+    ))
+    conn.commit()
+
+    return jsonify({'success': True, 'link_id': link_id})
+
+@app.route('/api/building_by_address', methods=['POST'])
+def building_by_address():
+    data = request.json
+    address = data['address']
+
+    cur.execute('SELECT id, name, system_type, installation_date FROM buildings WHERE address=?', (address,))
+    row = cur.fetchone()
+
+    if not row:
+        return jsonify({'found': False})
+
+    return jsonify({
+        'found': True,
+        'building_id': row[0],
+        'name': row[1],
+        'system_type': row[2],
+        'installation_date': row[3]
+    })
+
+@app.route('/api/work', methods=['POST'])
+def create_work():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    data = request.json
+
+    cur.execute('''
+        INSERT INTO works (building_id, type, status, total, created_at)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (
+        data['building_id'],
+
+
+        data['type'],
+        'pending',
+        data['total'],
+        datetime.now().strftime("%Y-%m-%d")
+    ))
+
+    conn.commit()
+    return jsonify({'success': True})
