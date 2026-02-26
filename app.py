@@ -385,6 +385,25 @@ def assign_team():
     conn.commit()
     return jsonify({'success': True})
 
+@app.route('/api/domain', methods=['GET', 'POST'])
+def domain_settings_api():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    if request.method == 'POST':
+        data = request.json
+        cur.execute('DELETE FROM domain_settings')
+        cur.execute('INSERT INTO domain_settings (domain, stripe_public, stripe_secret) VALUES (?, ?, ?)',
+                    (data['domain'], data['stripe_public'], data['stripe_secret']))
+        conn.commit()
+        return jsonify({'success': True})
+
+    cur.execute('SELECT domain, stripe_public FROM domain_settings LIMIT 1')
+    row = cur.fetchone()
+    if row:
+        return jsonify({'domain': row[0], 'stripe_public': row[1]})
+    return jsonify({})
+
 @app.route('/buildings')
 def buildings_page():
     if 'user' not in session:
