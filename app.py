@@ -26,7 +26,8 @@ cur = conn.cursor()
 cur.execute('''CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,
     username TEXT UNIQUE,
-    password TEXT
+    password TEXT,
+    role TEXT  -- admin | tecnico
 )''')
 
 # SETTINGS (preços, margens, percentuais)
@@ -143,7 +144,16 @@ cur.execute('''CREATE TABLE IF NOT EXISTS work_teams (
     team_id INTEGER
 )''')
 
+# TECHNICAL REPORTS
+cur.execute('''CREATE TABLE IF NOT EXISTS technical_reports (
+    id INTEGER PRIMARY KEY,
+    work_id INTEGER,
+    description TEXT,
+    created_at TEXT
+)''')
+
 conn.commit()
+
 
 # --------------------- ROUTES ---------------------
 
@@ -166,11 +176,17 @@ def login():
     if request.method == 'POST':
         user = request.form['username']
         password = request.form['password']
-        cur.execute('SELECT * FROM users WHERE username=? AND password=?', (user, password))
-        if cur.fetchone():
+
+        cur.execute('SELECT role FROM users WHERE username=? AND password=?', (user, password))
+        row = cur.fetchone()
+
+        if row:
             session['user'] = user
+            session['role'] = row[0]
             return redirect('/dashboard')
+
         return 'Erro login'
+
     return render_template('login.html')
 
 @app.route('/logout')
@@ -487,3 +503,85 @@ def pagina_predio(link_id):
         installation_date=building[4],
         works=works
                )
+
+@app.route('/api/work/update_status', methods=['POST'])
+def update_work_status():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    data = request.json
+
+    cur.execute('''
+        UPDATE works SET status=? WHERE id=?
+    ''', (data['status'], data['work_id']))
+
+    conn.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/work/report', methods=['POST'])
+def add_report():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    data = request.json
+
+    cur.execute('''
+        INSERT INTO technical_reports (work_id, description, created_at)
+        VALUES (?, ?, ?)
+    ''', (
+        data['work_id'],
+        data['description'],
+        datetime.now().strftime("%Y-%m-%d %H:%M")
+    ))
+
+    conn.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/building/upgrade_to_video', methods=['POST'])
+def upgrade_building():
+
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    data = request.json
+    building_id = data['building_id']
+
+    cur.execute('SELECT system_type FROM buildings WHERE id=?', (building_id,))
+    current = cur.fetchone()
+
+    if current[0] == 'video':
+        return jsonify({'error': 'Já é sistema vídeo'})
+
+    # Atualiza sistema
+    cur.execute('UPDATE buildings SET system_type="video" WHERE id=?', (building_id,))
+
+    # Cria nova obra automática
+    cur.execute('''
+        INSERT INTO works (building_id, type, status, total, created_at)
+        VALUES (?, 'upgrade', 'pending', 0, ?)
+    ''', (
+        building_id,
+        datetime.now().strftime("%Y-%m-%d")
+    ))
+
+    conn.commit()
+
+    return jsonify({'success': True})
+
+@app.route('/api/finance/summary')
+def finance_summary():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    cur.execute('SELECT SUM(total) FROM works WHERE status="completed"')
+    total_completed = cur.fetchone()[0] or 0
+
+    cur.execute('SELECT SUM(total) FROM works WHERE status="pending"')
+    total_pending = cur.fetchone()[0] or 0
+
+    return jsonify({
+        'completed': total_completed,
+        'pending': total_pending
+    })
+
+
