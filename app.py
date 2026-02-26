@@ -385,6 +385,12 @@ def assign_team():
     conn.commit()
     return jsonify({'success': True})
 
+@app.route('/buildings')
+def buildings_page():
+    if 'user' not in session:
+        return redirect('/login')
+    return render_template('buildings.html')
+
 @app.route('/api/work/pdf/<work_id>')
 def gerar_pdf(work_id):
 
