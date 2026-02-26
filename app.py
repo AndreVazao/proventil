@@ -58,6 +58,61 @@ cur.execute('''CREATE TABLE IF NOT EXISTS quotes (
     paid INTEGER DEFAULT 0
 )''')
 
+# BUILDINGS (Prédios / Vivendas)
+cur.execute('''CREATE TABLE IF NOT EXISTS buildings (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    address TEXT,
+    system_type TEXT,  -- audio | video
+    installation_date TEXT,
+    link_id TEXT UNIQUE
+)''')
+
+# APARTMENTS (Frações)
+cur.execute('''CREATE TABLE IF NOT EXISTS apartments (
+    id INTEGER PRIMARY KEY,
+    building_id INTEGER,
+    fraction TEXT,
+    FOREIGN KEY(building_id) REFERENCES buildings(id)
+)''')
+
+# WORKS (Obras / Intervenções)
+cur.execute('''CREATE TABLE IF NOT EXISTS works (
+    id INTEGER PRIMARY KEY,
+    building_id INTEGER,
+    type TEXT,  -- installation | maintenance | upgrade
+    status TEXT, -- pending | approved | completed
+    total REAL,
+    created_at TEXT,
+    FOREIGN KEY(building_id) REFERENCES buildings(id)
+)''')
+
+# TEAMS
+cur.execute('''CREATE TABLE IF NOT EXISTS teams (
+    id INTEGER PRIMARY KEY,
+    name TEXT
+)''')
+
+# TECHNICIANS
+cur.execute('''CREATE TABLE IF NOT EXISTS technicians (
+    id INTEGER PRIMARY KEY,
+    name TEXT
+)''')
+
+# TEAM MEMBERS
+cur.execute('''CREATE TABLE IF NOT EXISTS team_members (
+    team_id INTEGER,
+    technician_id INTEGER
+)''')
+
+# VEHICLES
+cur.execute('''CREATE TABLE IF NOT EXISTS vehicles (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    gps_tracker_id TEXT,
+    team_id INTEGER
+)''')
+
 conn.commit()
 
 # --------------------- ROUTES ---------------------
