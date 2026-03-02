@@ -94,7 +94,11 @@ cur.execute('''CREATE TABLE IF NOT EXISTS works (
     created_at TEXT,
     FOREIGN KEY(building_id) REFERENCES buildings(id)
 )''')
-
+try:
+    cur.execute('ALTER TABLE works ADD COLUMN scheduled_date TEXT')
+except:
+    pass
+    
 # TEAMS
 cur.execute('''CREATE TABLE IF NOT EXISTS teams (
     id INTEGER PRIMARY KEY,
@@ -187,7 +191,14 @@ cur.execute('''CREATE TABLE IF NOT EXISTS invoices (
     paid INTEGER DEFAULT 0
 )''')
 
-conn.commit()
+# COMPANIES (multi empresa futura)
+cur.execute('''CREATE TABLE IF NOT EXISTS companies (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    vat TEXT
+)''')
+
+
 
 conn.commit()
 
@@ -559,7 +570,20 @@ def update_work_status():
     cur.execute('''
         UPDATE works SET status=? WHERE id=?
     ''', (data['status'], data['work_id']))
+if data['status'] == 'completed':
+    cur.execute('SELECT total FROM works WHERE id=?', (data['work_id'],))
+    total = cur.fetchone()[0]
 
+    cur.execute('''
+        INSERT INTO invoices (work_id, amount, issued_at)
+        VALUES (?, ?, ?)
+    ''', (
+        data['work_id'],
+        total,
+        datetime.now().strftime("%Y-%m-%d")
+    ))
+
+    create_notification(f"Fatura gerada para obra {data['work_id']}")
     conn.commit()
     return jsonify({'success': True})
 
@@ -706,6 +730,48 @@ def kpi_dashboard():
         'revenue': revenue
     })
 
+@app.route('/api/work/schedule', methods=['POST'])
+def schedule_work():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    data = request.json
+
+    cur.execute('UPDATE works SET scheduled_date=? WHERE id=?',
+                (data['date'], data['work_id']))
+
+    conn.commit()
+    create_notification(f"Obra {data['work_id']} agendada para {data['date']}")
+
+    return jsonify({'success': True})
+
+@app.route('/api/teams/full')
+def teams_full():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    cur.execute('SELECT id, name FROM teams')
+    teams = cur.fetchall()
+
+    result = []
+
+    for t in teams:
+        cur.execute('''
+            SELECT technicians.name
+            FROM team_members
+            JOIN technicians ON technicians.id = team_members.technician_id
+            WHERE team_members.team_id=?
+        ''', (t[0],))
+
+        members = [m[0] for m in cur.fetchall()]
+
+        result.append({
+            'team': t[1],
+            'members': members
+        })
+
+    return jsonify(result)
+
 import shutil
 
 @app.route('/admin/backup')
@@ -727,4 +793,9 @@ def create_notification(message):
     ''', (message, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
     conn.commit()
 
-
+def export_saft():
+    """
+    Placeholder para futura integração SAFT-PT.
+    Estrutura preparada para exportação faturação oficial.
+    """
+    pass
