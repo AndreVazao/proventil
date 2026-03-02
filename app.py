@@ -178,6 +178,17 @@ cur.execute('''CREATE TABLE IF NOT EXISTS vehicle_positions (
     created_at TEXT
 )''')
 
+# INVOICES
+cur.execute('''CREATE TABLE IF NOT EXISTS invoices (
+    id INTEGER PRIMARY KEY,
+    work_id INTEGER,
+    amount REAL,
+    issued_at TEXT,
+    paid INTEGER DEFAULT 0
+)''')
+
+conn.commit()
+
 conn.commit()
 
 # --------------------- ROUTES ---------------------
@@ -669,6 +680,30 @@ def get_last_position(vehicle_id):
         'latitude': row[0],
         'longitude': row[1],
         'updated_at': row[2]
+    })
+
+@app.route('/api/kpi')
+def kpi_dashboard():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    cur.execute('SELECT COUNT(*) FROM buildings')
+    total_buildings = cur.fetchone()[0]
+
+    cur.execute('SELECT COUNT(*) FROM works WHERE status="pending"')
+    pending_works = cur.fetchone()[0]
+
+    cur.execute('SELECT COUNT(*) FROM works WHERE status="completed"')
+    completed_works = cur.fetchone()[0]
+
+    cur.execute('SELECT SUM(total) FROM works WHERE status="completed"')
+    revenue = cur.fetchone()[0] or 0
+
+    return jsonify({
+        'buildings': total_buildings,
+        'pending': pending_works,
+        'completed': completed_works,
+        'revenue': revenue
     })
 
 import shutil
