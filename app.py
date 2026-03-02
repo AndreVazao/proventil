@@ -305,7 +305,7 @@ def create_building():
         link_id
     ))
     conn.commit()
-
+log_action(session['user'], f"Criou prédio {data['name']}")
     return jsonify({'success': True, 'link_id': link_id})
 
 @app.route('/api/building_by_address', methods=['POST'])
@@ -348,6 +348,7 @@ def create_work():
     ))
 
     conn.commit()
+    log_action(session['user'], f"Criou obra prédio {data['building_id']}")
     return jsonify({'success': True})
 
 @app.route('/videoporteiro')
@@ -549,6 +550,7 @@ def add_report():
     ))
 
     conn.commit()
+    log_action(session['user'], f"Alterou estado obra {data['work_id']} para {data['status']}")
     return jsonify({'success': True})
 
 @app.route('/api/building/upgrade_to_video', methods=['POST'])
