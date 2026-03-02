@@ -13,7 +13,25 @@
 </header>
 
 <div class="container">
+    <hr>
+<h3>KPIs Gerais</h3>
+<div id="kpis"></div>
 
+<script>
+async function carregarKPIs() {
+    const res = await fetch('/api/kpi');
+    const data = await res.json();
+
+    document.getElementById("kpis").innerHTML = `
+        <p><strong>Prédios:</strong> ${data.buildings}</p>
+        <p><strong>Obras Pendentes:</strong> ${data.pending}</p>
+        <p><strong>Obras Concluídas:</strong> ${data.completed}</p>
+        <p><strong>Faturação Total:</strong> €${data.revenue}</p>
+    `;
+}
+
+carregarKPIs();
+</script>
     <h3>Configurações Gerais</h3>
 
     <label>Preço Base:</label>
