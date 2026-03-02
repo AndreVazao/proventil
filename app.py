@@ -1,3 +1,4 @@
+from werkzeug.security import generate_password_hash, check_password_hash
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib import colors
@@ -160,6 +161,23 @@ cur.execute('''CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TEXT
 )''')
 
+# NOTIFICATIONS
+cur.execute('''CREATE TABLE IF NOT EXISTS notifications (
+    id INTEGER PRIMARY KEY,
+    message TEXT,
+    read INTEGER DEFAULT 0,
+    created_at TEXT
+)''')
+
+# VEHICLE POSITIONS
+cur.execute('''CREATE TABLE IF NOT EXISTS vehicle_positions (
+    id INTEGER PRIMARY KEY,
+    vehicle_id INTEGER,
+    latitude TEXT,
+    longitude TEXT,
+    created_at TEXT
+)''')
+
 conn.commit()
 
 # --------------------- ROUTES ---------------------
@@ -184,12 +202,12 @@ def login():
         user = request.form['username']
         password = request.form['password']
 
-        cur.execute('SELECT role FROM users WHERE username=? AND password=?', (user, password))
+        cur.execute('SELECT password, role FROM users WHERE username=?', (user,))
         row = cur.fetchone()
 
-        if row:
+        if row and check_password_hash(row[0], password):
             session['user'] = user
-            session['role'] = row[0]
+            session['role'] = row[1]
             return redirect('/dashboard')
 
         return 'Erro login'
@@ -348,6 +366,7 @@ def create_work():
     ))
 
     conn.commit()
+    create_notification(f"Nova obra criada para prédio {data['building_id']}")
     log_action(session['user'], f"Criou obra prédio {data['building_id']}")
     return jsonify({'success': True})
 
@@ -599,5 +618,78 @@ def finance_summary():
         'completed': total_completed,
         'pending': total_pending
     })
+
+@app.route('/api/notifications')
+def get_notifications():
+    if 'user' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+
+    cur.execute('SELECT id, message, read FROM notifications ORDER BY id DESC')
+    rows = cur.fetchall()
+
+    return jsonify([
+        {'id': r[0], 'message': r[1], 'read': r[2]}
+        for r in rows
+    ])
+
+@app.route('/api/gps/update', methods=['POST'])
+def update_gps():
+    data = request.json
+
+    cur.execute('''
+        INSERT INTO vehicle_positions (vehicle_id, latitude, longitude, created_at)
+        VALUES (?, ?, ?, ?)
+    ''', (
+        data['vehicle_id'],
+        data['latitude'],
+        data['longitude'],
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ))
+
+    conn.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/gps/<vehicle_id>')
+def get_last_position(vehicle_id):
+
+    cur.execute('''
+        SELECT latitude, longitude, created_at
+        FROM vehicle_positions
+        WHERE vehicle_id=?
+        ORDER BY id DESC LIMIT 1
+    ''', (vehicle_id,))
+
+    row = cur.fetchone()
+
+    if not row:
+        return jsonify({'found': False})
+
+    return jsonify({
+        'found': True,
+        'latitude': row[0],
+        'longitude': row[1],
+        'updated_at': row[2]
+    })
+
+import shutil
+
+@app.route('/admin/backup')
+def backup_database():
+    if 'user' not in session or session.get('role') != 'admin':
+        return "Acesso negado"
+
+    backup_path = f"db/backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+    shutil.copyfile(db_path, backup_path)
+
+    log_action(session['user'], "Executou backup base dados")
+
+    return f"Backup criado: {backup_path}"
+
+def create_notification(message):
+    cur.execute('''
+        INSERT INTO notifications (message, created_at)
+        VALUES (?, ?)
+    ''', (message, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    conn.commit()
 
 
