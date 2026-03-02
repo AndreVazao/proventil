@@ -152,8 +152,15 @@ cur.execute('''CREATE TABLE IF NOT EXISTS technical_reports (
     created_at TEXT
 )''')
 
-conn.commit()
+# AUDIT LOGS
+cur.execute('''CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY,
+    user TEXT,
+    action TEXT,
+    created_at TEXT
+)''')
 
+conn.commit()
 
 # --------------------- ROUTES ---------------------
 
@@ -460,6 +467,13 @@ def gerar_pdf(work_id):
     doc.build(elements)
 
     return jsonify({'file': filename})
+
+def log_action(user, action):
+    cur.execute('''
+        INSERT INTO audit_logs (user, action, created_at)
+        VALUES (?, ?, ?)
+    ''', (user, action, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    conn.commit()
 
 def gerar_clausulas():
     return """
