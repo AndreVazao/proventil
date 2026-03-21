@@ -1,0 +1,54 @@
+name: Repository Visibility Only
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  visibility:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build run summary
+        shell: bash
+        run: |
+          {
+            echo "# Repository visibility report"
+            echo ""
+            echo "- Repository: ${{ github.repository }}"
+            echo "- Ref: ${{ github.ref }}"
+            echo "- Event: ${{ github.event_name }}"
+            echo "- Actor: ${{ github.actor }}"
+            echo "- Commit: ${{ github.sha }}"
+            echo ""
+            echo "## Top-level files"
+            find . -maxdepth 1 -type f | sort | sed 's/^/- /'
+            echo ""
+            echo "## Top-level directories"
+            find . -maxdepth 1 -type d ! -path '.' | sort | sed 's/^/- /'
+            echo ""
+            echo "## Workflow files"
+            if [ -d .github/workflows ]; then
+              find .github/workflows -maxdepth 1 -type f | sort | sed 's/^/- /'
+            else
+              echo "- No workflow directory present before this run"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Console visibility output
+        shell: bash
+        run: |
+          echo "Repository: ${{ github.repository }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Top-level entries:"
+          find . -maxdepth 2 | sort | head -200
