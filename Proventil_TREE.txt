@@ -36,5 +36,6 @@ proventil/
 ├─ docker-compose.yml
 ├─ Dockerfile
 ├─ package.json
+├─ Proventil_TREE.txt
 ├─ requirements.txt
 └─ tsconfig.base.json
