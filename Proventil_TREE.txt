@@ -1,0 +1,40 @@
+proventil/
+├─ .github/
+│  └─ workflows/
+│     └─ visibility-only.yml
+├─ apps/
+│  ├─ api/
+│  │  ├─ src/
+│  │  │  ├─ app.ts
+│  │  │  └─ server.ts
+│  │  ├─ package.json
+│  │  └─ tsconfig.json
+│  └─ web/
+│     ├─ src/
+│     │  └─ app/
+│     │     ├─ layout.tsx
+│     │     └─ page.tsx
+│     ├─ next.config.js
+│     ├─ package.json
+│     └─ tsconfig.json
+├─ static/
+│  ├─ css/
+│  │  └─ style.css
+│  └─ js/
+│     └─ main.js
+├─ templates/
+│  ├─ building_public.html
+│  ├─ buildings.html
+│  ├─ dashboard.html
+│  ├─ extraction.html
+│  ├─ index.html
+│  ├─ login.html
+│  └─ videoporteiro.html
+├─ .env.example
+├─ .gitignore
+├─ app.py
+├─ docker-compose.yml
+├─ Dockerfile
+├─ package.json
+├─ requirements.txt
+└─ tsconfig.base.json
